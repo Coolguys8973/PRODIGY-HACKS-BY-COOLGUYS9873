@@ -1,0 +1,130 @@
+import { InputTypes, success, confirm, error } from "../swal"
+import { GameData } from "../types/gameData"
+import { Player } from "../types/player"
+import { Category } from "./base/categories"
+import { withCategory } from "./base/registry"
+
+function randomIntFromInterval (min, max) {
+    return Math.floor(Math.random() * (max - min + 1) + min)
+}
+
+function getHpFromPet (level, petGameData) {
+    const statValue = petGameData.data.statHealth
+    const level1Hp = (500 / 1.25) * Math.pow((Math.pow(1.25, 0.25)), statValue - 1)
+    const hpInc = (100 / 1.25) * Math.pow((Math.pow(1.25, 0.25)), statValue - 1)
+
+    return Math.ceil(level1Hp + (level - 1) * hpInc)
+}
+
+function getXP (level) {
+    if (level === 1) {
+        return 0
+    } else if (level === 2) {
+        return 10
+    }
+    const offsetLevel = level - 2
+    const xpConstant = 1.042
+    return Math.round((((1 - Math.pow(xpConstant, offsetLevel)) / (1 - xpConstant)) * 20) + 10)
+}
+
+export function getAllPets (level: number, gameData: GameData, player: Player) {
+    const xp = getXP(level)
+    const pets = gameData.pet
+    pets.forEach(x => {
+        // @ts-ignore
+        player.kennel.addPet(x.data.member === 0 ? x.ID : x.ID.toString(), getHpFromPet(level, x), xp, level)
+    })
+    player.kennel._encounterInfo._data.pets = pets.map(x => ({
+        firstSeenDate: Date.now() - randomIntFromInterval(20000, 120000),
+        ID: x.ID,
+        timesBattled: 1,
+        timesRescued: 1,
+        rescueAttempts: 1
+    }))
+}
+
+withCategory(Category.PET, ({ hack }) => {
+    hack("Get All Pets", "Every pet in the game gets added to your kennel.", async (hack, player, gameData) => {
+        const level = await InputTypes.integer("Please enter the level you want the pets to be.", 1, 100)
+        getAllPets(level, gameData, player)
+        success("You now have every pet in the game.")
+    })
+    hack("Clear All Pets", "Deletes all pets from your kennel.", async (hack, player) => {
+        const confirmed = await confirm("Are you sure you want to clear all your pets?")
+        if (!confirmed) {
+            error("Cancelled by user.")
+            return
+        }
+        player.kennel.data.length = 0
+        success("All pets have been cleared.")
+    })
+    hack("Fix Battle Crash", "If starting a battle crashes prodigy use this hack.", (hack, player) => {
+        player.kennel.petTeam.forEach((v: any) => {
+            if (v && (v as any).assignRandomSpells) (v as any).assignRandomSpells()
+        })
+        success("The battle crash should fixed.")
+    })
+    hack("Add Pet", "Add a pet to your kennel.", async (hack, player, gameData) => {
+        const petIndex = await InputTypes.select("Which pet do you want to obtain?", gameData.pet.map(x => x.data.name).sort((a, b) => a.localeCompare(b)))
+        const pet = gameData.pet[gameData.pet.findIndex(x => x.data.name === gameData.pet.map(x => x.data.name).sort((a, b) => a.localeCompare(b))[petIndex])]
+        const level = await InputTypes.integer("Please enter the level you want the pet to be.", 1, 100)
+        let xp
+        if (level === 1) {
+            xp = 0
+        } else if (level === 2) {
+            xp = 10
+        } else {
+            const offsetLevel = level - 2
+            const xpConstant = 1.042
+            xp = Math.round((((1 - Math.pow(xpConstant, offsetLevel)) / (1 - xpConstant)) * 20) + 10)
+        }
+        player.kennel.addPet(pet.ID.toString(), null, xp, level)
+        const encounterInfoPet = player.kennel._encounterInfo._data.pets.find(e => e.ID === pet.ID)
+        if (encounterInfoPet) {
+            encounterInfoPet.timesRescued++
+        } else {
+            player.kennel._encounterInfo._data.pets.push({
+                firstSeenDate: Date.now() - randomIntFromInterval(20000, 120000),
+                ID: pet.ID,
+                timesBattled: 1,
+                timesRescued: 1
+            })
+        }
+        success(`You now have ${pet.data.name}`)
+    })
+    hack("Delete Pet", "Delete a pet from your kennel.", async (hack, player, gameData) => {
+        const petsArray = []
+        player.kennel.data.sort((a, b) => (a.nickname ?? gameData.pet.find(i => +i.ID === +a.ID)?.data.name ?? "Unknown").localeCompare(b.nickname ?? gameData.pet.find(i => +i.ID === +b.ID)?.data.name ?? "Unknown")).forEach(x => {
+            petsArray.push(`${x.nickname ?? gameData.pet.find(i => +i.ID === +x.ID)?.data.name ?? "Unknown"} | Level ${x.level}`)
+        })
+        const petIndex = await InputTypes.select("Which pet do you want to delete?", petsArray)
+        player.kennel.data.splice(petIndex, 1)
+        success("Successfully deleted pet.")
+    })
+    hack("Edit Pet", "Edit a pet's details", async (hack, player, gameData) => {
+        const pet = await InputTypes.select("Which pet do you want to edit?", player.kennel.data.map(x => `${x.nickname ?? gameData.pet.find(i => +i.ID === +x.ID)?.data.name ?? "Unknown"} | Level ${x.level}`))
+        const petToEdit = player.kennel.data[pet]
+        const wantToEdit = await InputTypes.select("What do you want to edit?", ["Nickname", "Level", "Spells"])
+
+        if (wantToEdit === 0) {
+            const nickname = await InputTypes.string("Please enter the new nickname.", petToEdit.nickname)
+            petToEdit.nickname = nickname
+            // eslint-disable-next-line eqeqeq
+            success(`${petToEdit.nickname ?? gameData.pet.find(e => e.ID == petToEdit.ID)?.name ?? "Unknown"} is now nicknamed ${petToEdit.nickname}`)
+        } else if (wantToEdit === 1) {
+            const level = await InputTypes.integer("Please enter the new level.", 1, 100, petToEdit.level)
+            petToEdit.level = level
+            petToEdit.stars = getXP(level)
+            // eslint-disable-next-line eqeqeq
+            success(`${petToEdit.nickname ?? gameData.pet.find(e => e.ID == petToEdit.ID)?.name ?? "Unknown"} is now level ${petToEdit.level}`)
+        } else if (wantToEdit === 2) {
+            const spellOne = await InputTypes.select("Please select the first spell.", gameData.spell.map(x => x.data.name), gameData.spell.findIndex(e => e.ID === petToEdit.foreignSpells[0]) + 2) // Yes I know this is weird but it works
+            const spellTwo = await InputTypes.select("Please select the second spell.", gameData.spell.map(x => x.data.name), gameData.spell.findIndex(e => e.ID === petToEdit.foreignSpells[1]) + 2) // Yes I know this is weird but it works
+
+            petToEdit.foreignSpells = [gameData.spell[spellOne].ID - 2, gameData.spell[spellTwo].ID - 2] // Yes I know this is weird but it works
+
+            // eslint-disable-next-line eqeqeq
+            success(`${petToEdit.nickname ?? gameData.pet.find(e => e.ID == petToEdit.ID)?.name ?? "Unknown"} now has ${gameData.spell[spellOne].name} and ${gameData.spell[spellTwo].name}`)
+        }
+    })
+})
