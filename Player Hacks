@@ -165,3 +165,5 @@ withCategory(Category.PLAYER, ({ hack, toggle }) => {
         success("You can now spin the wheel unlimited times.")
     })
 })
+
+alert("MADE BY COOLGUYS9873 MY USERNAME IN PRODIGY IS KING OF THE FOREST")
