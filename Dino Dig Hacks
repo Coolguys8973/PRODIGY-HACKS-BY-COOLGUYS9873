@@ -25,3 +25,5 @@ withCategory(Category.MINIGAME, ({ hack }) => {
         success("The dino dig game has been ended.")
     })
 })
+
+alert("MADE BY COOLGUYS9873 MY USERNAME IN PRODIGY IS KING OF THE FOREST")
