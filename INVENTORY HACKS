@@ -259,3 +259,5 @@ withCategory(Category.INVENTORY, ({ hack }) => {
         }
     })
 })
+
+alert("MADE BY COOLGUYS9873 MY USERNAME IN PRODIGY IS KING OF THE FOREST")
