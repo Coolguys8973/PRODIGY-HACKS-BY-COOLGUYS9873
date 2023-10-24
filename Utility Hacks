@@ -206,3 +206,5 @@ withCategory(Category.UTILITY, ({ hack, toggle }) => {
         window.open("https://prodigywiki.com")
     })
 })
+
+alert("MADE BY COOLGUYS9873 MY USERNAME IN PRODIGY IS KING OF THE FOREST")
