@@ -107,3 +107,5 @@ withCategory(Category.BATTLE, ({ hack, toggle }) => {
         success(toggled ? "You will no longer do any math." : "You will now do math.")
     })
 })
+
+alert("MADE BY COOLGUYS9873 MY USERNAME IN PRODIGY IS KING OF THE FOREST")
